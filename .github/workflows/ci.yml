@@ -25,3 +25,48 @@ jobs:
 
     - name: Run tests
       run: pytest tests/
+train-and-quantize:
+    name: 🛠️ Train and Quantize Model
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Train and Quantize
+        run: |
+          python src/train.py
+          python src/quantize.py
+
+      - name: Upload model artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: models
+          path: models/
+
+  build-and-test-container:
+    name: 🐳 Build & Run Docker Image
+    runs-on: ubuntu-latest
+    needs: train-and-quantize
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download model artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: models
+          path: models/
+
+      - name: Build Docker image
+        run: docker build -t mlops-predict .
+
+      - name: Run container
+        run: docker run --rm mlops-predict
